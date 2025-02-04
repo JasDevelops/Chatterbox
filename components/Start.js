@@ -160,10 +160,10 @@ const styles = StyleSheet.create({
 	},
 	// Moves the form up when the keyboard is open
 	formContainerShifted: {
-		flex: 0.6, // Allocates 55% of screen height
-		paddingBottom: Platform.OS === 'android' ? 50 : 5, // Adds padding at the bottom
-		paddingTop: Platform.OS === 'android' ? 50 : 5, // Adds padding at the bottom
-		marginBottom: 50,
+		flex: 0.6, // Adjust heights for android and ois
+		paddingBottom: Platform.OS === 'android' ? 5 : 5, // Adds padding at the bottom
+		paddingTop: Platform.OS === 'android' ? 5 : 5, // Adds padding at the bottom
+		marginBottom: Platform.OS === 'android' ? 0 : 50, // Lower the box further down on Android
 	},
 	// Input field and icon container
 	inputContainer: {
