@@ -1,67 +1,145 @@
 import React, { useState, useEffect } from 'react';
-import {
-	StyleSheet,
-	View,
-	Platform,
-	KeyboardAvoidingView,
-	TouchableWithoutFeedback,
-	Keyboard,
-	Text,
-} from 'react-native';
+import { StyleSheet, View, Platform, TouchableWithoutFeedback, Keyboard, Text } from 'react-native';
 import { GiftedChat, Bubble, InputToolbar, Composer, Send, Day } from 'react-native-gifted-chat';
 import { Ionicons } from '@expo/vector-icons';
+import { collection, query, orderBy, onSnapshot, addDoc } from 'firebase/firestore';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const Chat = ({ route, navigation }) => {
-	// Get user name & background color
+const Chat = ({ route, navigation, db }) => {
+	// Get safe are inset
+	const insets = useSafeAreaInsets();
+	// Use state for userId
+	const [userId, setUserId] = useState(null);
+	// Get user ID, name & background color
 	const { name, selectedColor } = route.params;
 	// State to manage chat messages
 	const [messages, setMessages] = useState([]);
-	// Function to handle sending new messages
-	const onSend = (newMessages) => {
-		setMessages((previousMessages) => GiftedChat.append(previousMessages, newMessages));
-	};
+	//State to detect if keyboard is open
+	const [keyboardVisible, setKeyboardVisible] = useState(false);
 
 	useEffect(() => {
-		// Initialize chat with default message
-		setMessages([
-			// System message displayed when user enters the chat
-			{
-				_id: 0,
-				text: 'You have entered the chat.',
-				createdAt: new Date(),
-				system: true, // Marks it as a system message
-			},
-			// Default bot message
-			{
-				_id: 1,
-				text: 'Hello developer',
-				createdAt: new Date(),
-				user: {
-					_id: 2,
-					name: 'React Native',
-					avatar: 'https://avatar.iran.liara.run/public/89', // Placeholder Bot Avatar from "https://avatar-placeholder.iran.liara.run/avatars"
-				},
-			},
-		]);
+		// Add listeners to check, if keyboard is visible or not
+		const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
+			setKeyboardVisible(true);
+		});
+		const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+			setKeyboardVisible(false);
+		});
+
+		return () => {
+			keyboardDidShowListener.remove();
+			keyboardDidHideListener.remove();
+		};
 	}, []);
+
+	// Function to handle sending new messages
+	const onSend = (newMessages = []) => {
+		if (!userId) return; // Ensure userId is available before sending messages
+
+		const message = newMessages[0]; // Get the latest message
+
+		// Save new message to Firestore
+		addDoc(collection(db, 'messages'), {
+			text: message.text,
+			createdAt: new Date(), // Store as Firestore timestamp
+			user: {
+				_id: userId, // Identify the sender
+				name: name, // Display sender's name
+			},
+		});
+		// Clear the input field
+		setMessages((previousMessages) =>
+			GiftedChat.append(previousMessages, [{ ...message, text: '' }])
+		);
+	};
+
+	// Get Firebase Auth instance
+	useEffect(() => {
+		const auth = getAuth();
+		const unsubscribe = onAuthStateChanged(auth, (user) => {
+			if (user) {
+				setUserId(user.uid); // Set the Firebase user ID
+				console.log('Authenticated User ID:', user.uid);
+			} else {
+				console.log('No authenticated user found');
+			}
+		});
+
+		return () => unsubscribe(); // Cleanup auth listener
+	}, []);
+
+	// Fetch chat messages from Firestore in real-time
+	useEffect(() => {
+		if (!userId) return; // Wait until userId is available
+
+		const messagesQuery = query(collection(db, 'messages'), orderBy('createdAt', 'desc'));
+
+		// Subscribe to Firestore messages collection and listen for updates
+		const unsubscribe = onSnapshot(messagesQuery, (querySnapshot) => {
+			const loadedMessages = querySnapshot.docs.map((doc) => {
+				const data = doc.data();
+
+				return {
+					_id: doc.id,
+					text: data.text,
+					createdAt: data.createdAt?.toDate(), // Convert Firestore timestamp to Date
+					user: {
+						_id: data.user?._id || 'unknown', // Ensure user ID is present
+						name: data.user?.name || 'Unknown', // Ensure user name is present
+					},
+				};
+			});
+
+			setMessages(loadedMessages);
+		});
+
+		return () => unsubscribe(); // Cleanup listener on unmount
+	}, [userId]); // Depend on userId to ensure correct alignment
+
+	useEffect(() => {
+		// Ensure automatic scrolling when new messages arrive
+		if (messages.length > 0) {
+			setTimeout(() => {
+				setMessages((prevMessages) => [...prevMessages]);
+			}, 100);
+		}
+	}, [messages]);
+
 	useEffect(() => {
 		// Set the navigation title to the user's name
 		navigation.setOptions({ title: name || 'Chat' });
-	}, [name, navigation]); //  Ensures the effect runs when `name` changes
+	}, [name, navigation]); //  Ensures the effect re-runs when `name` changes
 
 	return (
 		<TouchableWithoutFeedback onPress={Keyboard.dismiss}>
 			{/* Main container with Dynamically set background color */}
-			<View style={[styles.container, { backgroundColor: selectedColor }]}>
+			<View
+				style={[
+					styles.container,
+					{ backgroundColor: selectedColor },
+					keyboardVisible && styles.containerShifted,
+				]}>
 				{/* Chat interface component */}
 				<GiftedChat
 					messages={messages}
 					onSend={(messages) => onSend(messages)}
 					user={{
-						_id: 1,
-						name: name || 'You',
-						avatar: 'https://avatar.iran.liara.run/public/66', // User Avatar from "https://avatar-placeholder.iran.liara.run/avatars"
+						_id: userId, // Pass correct userId from authentication
+						name: name, // Pass user’s name
 					}}
+					listViewProps={{
+						keyboardShouldPersistTaps: 'handled', // Ensures taps on the chat don’t dismiss the keyboard
+						scrollsToTop: false, // Prevents scrolling to the top accidentally
+					}}
+					scrollToBottom // Enables scroll to bottom button
+					scrollToBottomComponent={() => (
+						<Ionicons
+							name="chevron-down"
+							size={30}
+							color="#757083"
+						/>
+					)}
 					// Chat bubbles
 					renderBubble={(props) => (
 						<Bubble
@@ -101,7 +179,10 @@ const Chat = ({ route, navigation }) => {
 					renderInputToolbar={(props) => (
 						<InputToolbar
 							{...props}
-							containerStyle={styles.inputToolbar} // Ensures enough height for Composer
+							containerStyle={[
+								styles.inputToolbar,
+								{ marginBottom: Platform.OS === 'ios' ? insets.bottom : 10 }, // Adjust for iOS insets
+							]}
 							accessibilityLabel="Message input field"
 							accessibilityHint="Type a message and send it using the send button."
 							accessibilityRole="text"
@@ -135,8 +216,6 @@ const Chat = ({ route, navigation }) => {
 					alwaysShowSend={true} // Keeps the send button visible
 					keyboardShouldPersistTaps="handled" // Prevents chat from interfering with input field
 				/>
-				{/* Prevent layout shifts when keyboard is visible */}
-				{Platform.OS === 'android' ? <KeyboardAvoidingView behavior="height" /> : null}
 			</View>
 		</TouchableWithoutFeedback>
 	);
@@ -147,6 +226,11 @@ const styles = StyleSheet.create({
 	container: {
 		flex: 1, // Ensures it takes full screen height
 	},
+	containerShifted: {
+		flex: 1, // Adjust heights to shift up when the keyboard is open
+		marginBottom: 0,
+		paddingBottom: Platform.OS === 'android' ? 0 : 0, // More spacing for Android/iOS
+	},
 	inputToolbar: {
 		width: '100%',
 		alignSelf: 'center',
@@ -154,6 +238,8 @@ const styles = StyleSheet.create({
 		backgroundColor: '#fff',
 		borderTopWidth: 1,
 		borderTopColor: '#ddd',
+		paddingBottom: 10,
+		paddingHorizontal: 10,
 	},
 	composerInput: {
 		color: '#000',

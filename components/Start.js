@@ -10,7 +10,12 @@ import {
 	TouchableWithoutFeedback,
 	Keyboard,
 	Platform,
+	Alert,
 } from 'react-native';
+
+// Firebase Auth imports
+import { signInAnonymously } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Import assets
 import UserIcon from '../assets/icon.svg';
@@ -19,7 +24,7 @@ const backgroundImage = require('../assets/background-image.png');
 // Define background color options
 const colors = ['#090C08', '#474056', '#8A95A5', '#B9C6AE'];
 
-const Start = ({ navigation }) => {
+const Start = ({ navigation, auth }) => {
 	// State to store user's name input
 	const [name, setName] = useState('');
 	// State to store selected background color
@@ -36,11 +41,44 @@ const Start = ({ navigation }) => {
 			setKeyboardVisible(false);
 		});
 
+		// Load stored name from AsyncStorage
+		const loadStoredName = async () => {
+			try {
+				const storedName = await AsyncStorage.getItem('userName');
+				if (storedName) {
+					setName(storedName);
+				}
+			} catch (error) {
+				console.error('Error loading stored name:', error);
+			}
+		};
+
+		loadStoredName(); // Call the function
+
 		return () => {
 			keyboardDidShowListener.remove();
 			keyboardDidHideListener.remove();
 		};
 	}, []);
+
+	// Handle anonymous login and navigate to Chat screen
+	const handleSignIn = async () => {
+		try {
+			// Save name before signing in
+			await AsyncStorage.setItem('userName', name);
+
+			const userCredential = await signInAnonymously(auth);
+			const user = userCredential.user;
+			navigation.navigate('Chat', {
+				userId: user.uid,
+				name: name || 'Guest',
+				selectedColor: selectedColor,
+			});
+		} catch (error) {
+			Alert.alert('Error', 'Failed to sign in. Please try again later.'); // Error message
+			console.error('Login error:', error);
+		}
+	};
 
 	return (
 		<TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -108,7 +146,7 @@ const Start = ({ navigation }) => {
 						{/* Start Chatting Button */}
 						<TouchableOpacity
 							style={styles.startButton}
-							onPress={() => navigation.navigate('Chat', { name, selectedColor })}
+							onPress={handleSignIn}
 							accessibilityLabel="Start Chatting Button"
 							accessibilityHint="Navigates to the chat screen with your selected options."
 							accessibilityRole="button">
