@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, LogBox } from 'react-native';
+import {
+	API_KEY,
+	AUTH_DOMAIN,
+	PROJECT_ID,
+	STORAGE_BUCKET,
+	MESSAGING_SENDER_ID,
+	APP_ID,
+} from '@env';
 
 // Firebase imports
 import { initializeApp } from 'firebase/app';
@@ -25,12 +33,12 @@ LogBox.ignoreLogs(['AsyncStorage has been extracted from']);
 
 // Firebase configuration
 const firebaseConfig = {
-	apiKey: 'REMOVED',
-	authDomain: 'chatterbox-db-1750f.firebaseapp.com',
-	projectId: 'chatterbox-db-1750f',
-	storageBucket: 'chatterbox-db-1750f.firebasestorage.app',
-	messagingSenderId: '825391937792',
-	appId: 'REMOVED',
+	apiKey: API_KEY,
+	authDomain: AUTH_DOMAIN,
+	projectId: PROJECT_ID,
+	storageBucket: STORAGE_BUCKET,
+	messagingSenderId: MESSAGING_SENDER_ID,
+	appId: APP_ID,
 };
 
 // Initialize Firebase services
@@ -67,6 +75,7 @@ const App = () => {
 	if (!fontsLoaded) {
 		return null; // Keeps splash screen until fonts are loaded
 	}
+
 	return (
 		<NavigationContainer>
 			<Stack.Navigator initialRouteName="Start">
@@ -85,6 +94,7 @@ const App = () => {
 					{(props) => (
 						<Chat
 							db={db}
+							auth={auth}
 							{...props}
 						/>
 					)}

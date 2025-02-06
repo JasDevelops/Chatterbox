@@ -3,10 +3,10 @@ import { StyleSheet, View, Platform, TouchableWithoutFeedback, Keyboard, Text } 
 import { GiftedChat, Bubble, InputToolbar, Composer, Send, Day } from 'react-native-gifted-chat';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, query, orderBy, onSnapshot, addDoc } from 'firebase/firestore';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged } from 'firebase/auth';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const Chat = ({ route, navigation, db }) => {
+const Chat = ({ route, navigation, db, auth }) => {
 	// Get safe are inset
 	const insets = useSafeAreaInsets();
 	// Use state for userId
@@ -56,18 +56,16 @@ const Chat = ({ route, navigation, db }) => {
 
 	// Get Firebase Auth instance
 	useEffect(() => {
-		const auth = getAuth();
 		const unsubscribe = onAuthStateChanged(auth, (user) => {
 			if (user) {
 				setUserId(user.uid); // Set the Firebase user ID
-				console.log('Authenticated User ID:', user.uid);
 			} else {
 				console.log('No authenticated user found');
 			}
 		});
 
 		return () => unsubscribe(); // Cleanup auth listener
-	}, []);
+	}, [auth]);
 
 	// Fetch chat messages from Firestore in real-time
 	useEffect(() => {
