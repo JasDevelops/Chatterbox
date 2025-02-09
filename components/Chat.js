@@ -5,8 +5,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { collection, query, orderBy, onSnapshot, addDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const Chat = ({ route, navigation, db, auth }) => {
+const Chat = ({ route, navigation, db, auth, isConnected }) => {
 	// Get safe are inset
 	const insets = useSafeAreaInsets();
 	// Use state for userId
@@ -18,14 +19,14 @@ const Chat = ({ route, navigation, db, auth }) => {
 	//State to detect if keyboard is open
 	const [keyboardVisible, setKeyboardVisible] = useState(false);
 
+	// Add listeners to check if keyboard is visible or not
 	useEffect(() => {
-		// Add listeners to check, if keyboard is visible or not
-		const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
-			setKeyboardVisible(true);
-		});
-		const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
-			setKeyboardVisible(false);
-		});
+		const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () =>
+			setKeyboardVisible(true)
+		);
+		const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () =>
+			setKeyboardVisible(false)
+		);
 
 		return () => {
 			keyboardDidShowListener.remove();
@@ -33,8 +34,34 @@ const Chat = ({ route, navigation, db, auth }) => {
 		};
 	}, []);
 
+	// Load cached messages from AsyncStorage when offline
+	const loadCachedMessages = async () => {
+		try {
+			const cachedMessages = await AsyncStorage.getItem('messages');
+			if (cachedMessages) {
+				setMessages(JSON.parse(cachedMessages));
+			}
+		} catch (error) {
+			console.error('Failed to load messages from AsyncStorage', error);
+		}
+	};
+
+	// Cache messages to AsyncStorage
+	const cacheMessages = async (messagesToCache) => {
+		try {
+			await AsyncStorage.setItem('messages', JSON.stringify(messagesToCache));
+		} catch (error) {
+			console.error('Failed to cache messages', error);
+		}
+	};
+
 	// Function to handle sending new messages
 	const onSend = (newMessages = []) => {
+		if (!isConnected) {
+			console.warn('Cannot send messages while offline.');
+			return; // Block sending if offline
+		}
+
 		if (!userId) return; // Ensure userId is available before sending messages
 
 		const message = newMessages[0]; // Get the latest message
@@ -48,10 +75,13 @@ const Chat = ({ route, navigation, db, auth }) => {
 				name: name, // Display sender's name
 			},
 		});
-		// Clear the input field
-		setMessages((previousMessages) =>
-			GiftedChat.append(previousMessages, [{ ...message, text: '' }])
-		);
+
+		// Update local state and cache messages
+		setMessages((previousMessages) => {
+			const updatedMessages = GiftedChat.append(previousMessages, newMessages);
+			cacheMessages(updatedMessages); // Cache the updated messages
+			return updatedMessages;
+		});
 	};
 
 	// Get Firebase Auth instance
@@ -67,36 +97,40 @@ const Chat = ({ route, navigation, db, auth }) => {
 		return () => unsubscribe(); // Cleanup auth listener
 	}, [auth]);
 
-	// Fetch chat messages from Firestore in real-time
+	// Fetch chat messages from Firestore in real-time when online
 	useEffect(() => {
-		if (!userId) return; // Wait until userId is available
+		let unsubscribe;
+		if (userId && isConnected) {
+			// Ensure user is online and userId is available before fetching
 
-		const messagesQuery = query(collection(db, 'messages'), orderBy('createdAt', 'desc'));
-
-		// Subscribe to Firestore messages collection and listen for updates
-		const unsubscribe = onSnapshot(messagesQuery, (querySnapshot) => {
-			const loadedMessages = querySnapshot.docs.map((doc) => {
-				const data = doc.data();
-
-				return {
-					_id: doc.id,
-					text: data.text,
-					createdAt: data.createdAt?.toDate(), // Convert Firestore timestamp to Date
-					user: {
-						_id: data.user?._id || 'unknown', // Ensure user ID is present
-						name: data.user?.name || 'Unknown', // Ensure user name is present
-					},
-				};
+			const messagesQuery = query(collection(db, 'messages'), orderBy('createdAt', 'desc'));
+			// Subscribe to Firestore messages collection and listen for updates
+			unsubscribe = onSnapshot(messagesQuery, (querySnapshot) => {
+				const loadedMessages = querySnapshot.docs.map((doc) => {
+					const data = doc.data();
+					return {
+						_id: doc.id,
+						text: data.text,
+						createdAt: data.createdAt?.toDate(), // Convert Firestore timestamp to Date
+						user: {
+							_id: data.user?._id || 'unknown', // Ensure user ID is present
+							name: data.user?.name || 'Unknown', // Ensure user name is present
+						},
+					};
+				});
+				setMessages(loadedMessages);
+				cacheMessages(loadedMessages); // Store in AsyncStorage
 			});
+		} else {
+			loadCachedMessages(); // Load messages from cache when offline
+		}
+		return () => {
+			if (unsubscribe) unsubscribe();
+		};
+	}, [userId, isConnected]);
 
-			setMessages(loadedMessages);
-		});
-
-		return () => unsubscribe(); // Cleanup listener on unmount
-	}, [userId]); // Depend on userId to ensure correct alignment
-
+	// Ensure automatic scrolling when new messages arrive
 	useEffect(() => {
-		// Ensure automatic scrolling when new messages arrive
 		if (messages.length > 0) {
 			setTimeout(() => {
 				setMessages((prevMessages) => [...prevMessages]);
@@ -104,8 +138,8 @@ const Chat = ({ route, navigation, db, auth }) => {
 		}
 	}, [messages]);
 
+	// Set the navigation title to the user's name
 	useEffect(() => {
-		// Set the navigation title to the user's name
 		navigation.setOptions({ title: name || 'Chat' });
 	}, [name, navigation]); //  Ensures the effect re-runs when `name` changes
 
@@ -138,6 +172,8 @@ const Chat = ({ route, navigation, db, auth }) => {
 							color="#757083"
 						/>
 					)}
+					alwaysShowSend={isConnected} // Send button is only always visible when online
+					keyboardShouldPersistTaps="handled" // Prevents chat from interfering with input
 					// Chat bubbles
 					renderBubble={(props) => (
 						<Bubble
@@ -173,46 +209,50 @@ const Chat = ({ route, navigation, db, auth }) => {
 							</Text>
 						</View>
 					)}
-					// Input bar container
-					renderInputToolbar={(props) => (
-						<InputToolbar
-							{...props}
-							containerStyle={[
-								styles.inputToolbar,
-								{ marginBottom: Platform.OS === 'ios' ? insets.bottom : 10 }, // Adjust for iOS insets
-							]}
-							accessibilityLabel="Message input field"
-							accessibilityHint="Type a message and send it using the send button."
-							accessibilityRole="text"
-						/>
-					)}
-					renderComposer={(props) => (
-						<Composer
-							{...props}
-							textInputStyle={styles.composerInput} // Forces Input field to be visible
-							accessibilityLabel="Type a message"
-							accessibilityHint="Enter your chat message here."
-							accessibilityRole="text"
-						/>
-					)}
-					renderSend={(props) => (
-						<Send
-							{...props}
-							containerStyle={styles.sendButtonContainer}
-							accessibilityLabel="Send button"
-							accessibilityHint="Tap to send your message."
-							accessibilityRole="button">
-							<View>
-								<Ionicons
-									name="send"
-									size={24}
-									color="#757083"
-								/>
-							</View>
-						</Send>
-					)}
-					alwaysShowSend={true} // Keeps the send button visible
-					keyboardShouldPersistTaps="handled" // Prevents chat from interfering with input field
+					// Prevent input components from rendering when offline
+					renderInputToolbar={(props) =>
+						isConnected ? (
+							<InputToolbar
+								{...props}
+								containerStyle={[
+									styles.inputToolbar,
+									{ marginBottom: Platform.OS === 'ios' ? insets.bottom : 10 },
+								]}
+								accessibilityLabel="Message input field"
+								accessibilityHint="Type a message and send it using the send button."
+								accessibilityRole="text"
+							/>
+						) : null
+					}
+					renderComposer={(props) =>
+						isConnected ? (
+							<Composer
+								{...props}
+								textInputStyle={styles.composerInput} // Forces Input field to be visible
+								accessibilityLabel="Type a message"
+								accessibilityHint="Enter your chat message here."
+								accessibilityRole="text"
+							/>
+						) : null
+					}
+					renderSend={(props) =>
+						isConnected ? (
+							<Send
+								{...props}
+								containerStyle={styles.sendButtonContainer}
+								accessibilityLabel="Send button"
+								accessibilityHint="Tap to send your message."
+								accessibilityRole="button">
+								<View>
+									<Ionicons
+										name="send"
+										size={24}
+										color="#757083"
+									/>
+								</View>
+							</Send>
+						) : null
+					}
 				/>
 			</View>
 		</TouchableWithoutFeedback>

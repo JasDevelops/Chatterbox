@@ -1,21 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, LogBox } from 'react-native';
-import {
-	API_KEY,
-	AUTH_DOMAIN,
-	PROJECT_ID,
-	STORAGE_BUCKET,
-	MESSAGING_SENDER_ID,
-	APP_ID,
-} from '@env';
-
-// Firebase imports
-import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
-import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
-
-// Import AsyncStorage for Firebase Auth persistence
-import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+import { useNetInfo } from '@react-native-community/netinfo';
+import { StyleSheet, LogBox, Alert } from 'react-native';
 
 // Import fonts and splash screen
 import * as SplashScreen from 'expo-splash-screen';
@@ -25,6 +10,23 @@ import * as Font from 'expo-font';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+// Firebase imports
+import { initializeApp, getApp } from 'firebase/app';
+import { getFirestore, disableNetwork, enableNetwork } from 'firebase/firestore';
+import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+
+// Environment variables
+import {
+	API_KEY,
+	AUTH_DOMAIN,
+	PROJECT_ID,
+	STORAGE_BUCKET,
+	MESSAGING_SENDER_ID,
+	APP_ID,
+} from '@env';
+
+// Import components
 import Start from './components/Start';
 import Chat from './components/Chat';
 
@@ -41,14 +43,25 @@ const firebaseConfig = {
 	appId: APP_ID,
 };
 
-// Initialize Firebase services
-const app = initializeApp(firebaseConfig);
+// Initialize the Firebase app once only
+let app;
+if (getApps().length === 0) {
+	app = initializeApp(firebaseConfig);
+} else {
+	app = getApp();
+}
+// Initalize Firestore
 const db = getFirestore(app);
 
-// Use AsyncStorage for Firebase Auth persistence
-const auth = initializeAuth(app, {
-	persistence: getReactNativePersistence(ReactNativeAsyncStorage),
-});
+// Initalize Firebase Auth
+let auth;
+try {
+	auth = initializeAuth(app, {
+		persistence: getReactNativePersistence(ReactNativeAsyncStorage),
+	});
+} catch (error) {
+	auth = getAuth(app); // Fallback in case of error
+}
 
 // Prevent the splash screen from hiding until fonts are loaded
 SplashScreen.preventAutoHideAsync();
@@ -57,8 +70,11 @@ SplashScreen.preventAutoHideAsync();
 const Stack = createNativeStackNavigator();
 
 const App = () => {
+	const netInfo = useNetInfo();
 	const [fontsLoaded, setFontsLoaded] = useState(false);
+	const [isConnected, setIsConnected] = useState(netInfo.isConnected ?? false);
 
+	// Load custom fonts
 	useEffect(() => {
 		const loadFonts = async () => {
 			await Font.loadAsync({
@@ -72,6 +88,31 @@ const App = () => {
 		loadFonts();
 	}, []);
 
+	// Monitor network status and enable/disable Firestore accordingly
+	useEffect(() => {
+		if (netInfo.isConnected !== null && netInfo.isConnected !== isConnected) {
+			setIsConnected(netInfo.isConnected);
+
+			const updateFirestoreConnection = async () => {
+				try {
+					if (netInfo.isConnected === false) {
+						Alert.alert('Connection Lost!');
+						await disableNetwork(db); //  Ensure Firestore is properly disabled
+						console.log('Firestore network disabled');
+					} else {
+						await enableNetwork(db); // Ensure Firestore is properly enabled
+						console.log('Firestore network enabled');
+					}
+				} catch (error) {
+					console.error('Error managing Firestore network:', error);
+				}
+			};
+
+			updateFirestoreConnection(); // Call async function
+		}
+	}, [netInfo.isConnected]);
+
+	// After all hooks have been called, conditionally render UI
 	if (!fontsLoaded) {
 		return null; // Keeps splash screen until fonts are loaded
 	}
@@ -95,6 +136,7 @@ const App = () => {
 						<Chat
 							db={db}
 							auth={auth}
+							isConnected={isConnected}
 							{...props}
 						/>
 					)}
