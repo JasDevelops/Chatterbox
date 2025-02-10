@@ -22,7 +22,7 @@ It also supports offline storage and accessibility features for screen readers.
 
 - **User-friendly Start Screen**
   - Users can enter their name and choose a background color before starting a chat.
-  <!-- - **Real-time Chat Interface**
+- **Real-time Chat Interface**
   - Send and receive text messages.
   - Supports **offline storage**, allowing users to view past conversations even without an internet connection.
 - **Media Sharing**
@@ -37,7 +37,7 @@ It also supports offline storage and accessibility features for screen readers.
 - **Gifted Chat Library**
   - Provides a smooth chat experience with built-in components.
 - **Accessibility**
-  - Fully compatible with **screen readers** for visually impaired users. -->
+  - Fully compatible with **screen readers** for visually impaired users.
 
 ---
 
@@ -45,36 +45,51 @@ It also supports offline storage and accessibility features for screen readers.
 
 - **React Native**: Framework for building cross-platform mobile applications.
 - **Expo**: Simplifies the development and testing of the app.
-<!-- - **Firebase Services**:
+- **Firebase Services**:
   - **Firestore Database** (Stores chat messages)
   - **Firebase Authentication** (Anonymous login)
   - **Firebase Cloud Storage** (Stores shared images)
 - **Gifted Chat**: Provides a customizable chat UI.
 - **React Navigation**: Handles screen navigation.
-- **Google Maps API**: Displays location data inside the chat. -->
+- **Google Maps API**: Displays location data inside the chat.
 
 ---
 
 ## Installation
 
-1. **Clone the Repository**
+1. **Clone the Repository to your local machine**
 
-`git clone <repository-url>`
+`git clone https://github.com/JasDevelops/Chatterbox.git`
 
-Replace `<repository-url>` with the actual GitHub repository URL
+2. **Using terminal: navigate to the Project Directory**
 
-2. **Navigate to the Project Directory**
-
-`cd react-native-chat-app`
+`cd Chatterbox`
 
 3. **Install Dependencies**
 
-`npm install`
+- With npm: `npm install`
+- With yarn: `yarn install`
 
-4. **Start the App with Expo**
+4. **Set up environmental variables**
+
+- Create a `.env`- file in the root directory
+- Add your Firebase project credentials to the `.env` file.
+  **important:** Make sure not to share this file publicly and never commit your .env file to version control (e.g., GitHub). Always ensure that .env is added to your .gitignore file (add `.env`to `.gitignore`- file in the root directory).
+
+```
+API_KEY=your_firebase_api_key_here
+AUTH_DOMAIN=your_firebase_auth_domain_here
+PROJECT_ID=your_firebase_project_id_here
+STORAGE_BUCKET=your_firebase_storage_bucket_here
+MESSAGING_SENDER_ID=your_firebase_messaging_sender_id_here
+APP_ID=your_firebase_app_id_here
+```
+
+5. **Start the App with Expo**
 
 `npx expo start`
 
+- To switch to Expo Go: Press `s` in the terminal.
 - To run on an Android Emulator: Press `a` in the terminal.
 - To run on an iOS Simulator (Mac users only): Press `i` in the terminal.
 - To scan and test on a physical device: Use the Expo Go app and scan the QR code.
@@ -84,8 +99,7 @@ Replace `<repository-url>` with the actual GitHub repository URL
 - Enter a Name & Select Background Color
 - On the start screen, enter your name and select a chat background color.
 - Press the "Start Chatting" button to enter the chat room.
-<!-- - Send Messages, Images & Location
-
+- Send Messages, Images & Location
 
 - Send text messages in real time.
 - Send images from your gallery or take a new picture.
@@ -96,7 +110,6 @@ Replace `<repository-url>` with the actual GitHub repository URL
 - Close and Reopen
 
 - The app remembers your chat history, even if you close and reopen it.
-  -->
 
 ## Contributing
 
