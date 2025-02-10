@@ -11,10 +11,12 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 // Firebase imports
-import { initializeApp, getApp } from 'firebase/app';
+import { initializeApp, getApp, getApps } from 'firebase/app';
 import { getFirestore, disableNetwork, enableNetwork } from 'firebase/firestore';
 import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
-import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+
+// Async Storage
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Environment variables
 import {
@@ -45,22 +47,26 @@ const firebaseConfig = {
 
 // Initialize the Firebase app once only
 let app;
-if (getApps().length === 0) {
+if (!getApps().length) {
+	// Firebase hasn't been initialized, proceed with initialization
 	app = initializeApp(firebaseConfig);
 } else {
+	// Firebase has already been initialized, use the existing app instance
 	app = getApp();
 }
-// Initalize Firestore
+
+// Initalize Firestore & Firebase Auth
 const db = getFirestore(app);
 
-// Initalize Firebase Auth
+// Initialize Firebase Auth (only if it hasn't been initialized)
 let auth;
-try {
+if (getApps().length && !auth) {
+	auth = getAuth(app); // Use getAuth to handle initialization automatically
+} else {
+	// Initialize with persistence if needed
 	auth = initializeAuth(app, {
-		persistence: getReactNativePersistence(ReactNativeAsyncStorage),
+		persistence: getReactNativePersistence(AsyncStorage), // AsyncStorage for auth persistence
 	});
-} catch (error) {
-	auth = getAuth(app); // Fallback in case of error
 }
 
 // Prevent the splash screen from hiding until fonts are loaded
@@ -96,7 +102,7 @@ const App = () => {
 			const updateFirestoreConnection = async () => {
 				try {
 					if (netInfo.isConnected === false) {
-						Alert.alert('Connection Lost!');
+						Alert.alert('You are offline. You can read, but cannot send messages.');
 						await disableNetwork(db); //  Ensure Firestore is properly disabled
 						console.log('Firestore network disabled');
 					} else {

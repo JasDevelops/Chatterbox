@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Platform, TouchableWithoutFeedback, Keyboard, Text } from 'react-native';
+import {
+	StyleSheet,
+	View,
+	Platform,
+	TouchableWithoutFeedback,
+	Keyboard,
+	Text,
+	Alert,
+} from 'react-native';
 import { GiftedChat, Bubble, InputToolbar, Composer, Send, Day } from 'react-native-gifted-chat';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, query, orderBy, onSnapshot, addDoc } from 'firebase/firestore';
@@ -18,6 +26,37 @@ const Chat = ({ route, navigation, db, auth, isConnected }) => {
 	const [messages, setMessages] = useState([]);
 	//State to detect if keyboard is open
 	const [keyboardVisible, setKeyboardVisible] = useState(false);
+	// Default comment bubble to 'right'
+	const [alignment, setBubbleAlignment] = useState('right');
+
+	// Load alignment from AsyncStorage when the component mounts
+	useEffect(() => {
+		const loadAlignment = async () => {
+			try {
+				const savedAlignment = await AsyncStorage.getItem('alignment');
+				if (savedAlignment) {
+					setBubbleAlignment(savedAlignment);
+				}
+			} catch (error) {
+				console.error('Failed to load alignment from AsyncStorage', error);
+			}
+		};
+
+		loadAlignment();
+	}, []);
+
+	// Save alignment to AsyncStorage
+	useEffect(() => {
+		const saveAlignment = async () => {
+			try {
+				await AsyncStorage.setItem('alignment', alignment);
+			} catch (error) {
+				console.error('Failed to save alignment to AsyncStorage', error);
+			}
+		};
+
+		saveAlignment();
+	}, [alignment]);
 
 	// Add listeners to check if keyboard is visible or not
 	useEffect(() => {
@@ -97,6 +136,13 @@ const Chat = ({ route, navigation, db, auth, isConnected }) => {
 		return () => unsubscribe(); // Cleanup auth listener
 	}, [auth]);
 
+	// Load cached messages only after userId is set
+	useEffect(() => {
+		if (userId) {
+			loadCachedMessages();
+		}
+	}, [userId]); // This will run when userId changes
+
 	// Fetch chat messages from Firestore in real-time when online
 	useEffect(() => {
 		let unsubscribe;
@@ -111,7 +157,7 @@ const Chat = ({ route, navigation, db, auth, isConnected }) => {
 					return {
 						_id: doc.id,
 						text: data.text,
-						createdAt: data.createdAt?.toDate(), // Convert Firestore timestamp to Date
+						createdAt: data.createdAt ? data.createdAt.toDate() : new Date(), // Convert Firestore timestamp to Date
 						user: {
 							_id: data.user?._id || 'unknown', // Ensure user ID is present
 							name: data.user?.name || 'Unknown', // Ensure user name is present
@@ -181,6 +227,10 @@ const Chat = ({ route, navigation, db, auth, isConnected }) => {
 							wrapperStyle={{
 								right: { backgroundColor: '#757083' }, // User bubble color
 								left: { backgroundColor: '#f0f0f0' }, // Received bubble color
+							}}
+							containerStyle={{
+								right: { alignItems: alignment === 'right' ? 'flex-end' : 'flex-start' }, // User message is on the right
+								left: { alignItems: alignment === 'left' ? 'flex-start' : 'flex-end' }, // Other message is on the left
 							}}
 							accessibilityLabel="Chat bubble"
 							accessibilityHint="Contains the chat message content."
