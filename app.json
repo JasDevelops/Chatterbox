@@ -13,9 +13,11 @@
 			"resizeMode": "contain",
 			"backgroundColor": "#ffffff"
 		},
+
 		"ios": {
 			"supportsTablet": true,
-			"bundleIdentifier": "com.jasdevelops.chatterbox"
+			"bundleIdentifier": "com.jasdevelops.chatterbox",
+			"runtimeVersion": "brideged"
 		},
 		"android": {
 			"adaptiveIcon": {
