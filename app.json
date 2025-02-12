@@ -17,17 +17,31 @@
 		"ios": {
 			"supportsTablet": true,
 			"bundleIdentifier": "com.jasdevelops.chatterbox",
-			"runtimeVersion": "brideged"
+			"runtimeVersion": "brideged",
+			"infoPlist": {
+				"NSLocationWhenInUseUsageDescription": "This app requires location access to share your current position with other users.",
+				"NSLocationAlwaysUsageDescription": "This app requires location access to provide real-time location updates.",
+				"NSMicrophoneUsageDescription": "This app requires microphone access to record audio."
+			}
 		},
 		"android": {
 			"adaptiveIcon": {
 				"foregroundImage": "./assets/adaptive-icon.png",
-				"backgroundColor": "#ffffff"
+				"backgroundColor": "#ffffff",
+				"permissions": ["RECORD_AUDIO", "CAMERA", "READ_EXTERNAL_STORAGE", "WRITE_EXTERNAL_STORAGE"]
 			},
 			"package": "com.jasdevelops.chatterbox"
 		},
 		"web": {
 			"favicon": "./assets/favicon.png"
-		}
+		},
+		"plugins": [
+			[
+				"expo-av",
+				{
+					"microphonePermission": "Allow chatterbox to access your microphone."
+				}
+			]
+		]
 	}
 }
