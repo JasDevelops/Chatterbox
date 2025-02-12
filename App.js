@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNetInfo } from '@react-native-community/netinfo';
 import { StyleSheet, LogBox, Alert } from 'react-native';
+import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 
 // Import fonts and splash screen
 import * as SplashScreen from 'expo-splash-screen';
@@ -13,7 +14,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 // Firebase imports
 import { initializeApp, getApp, getApps } from 'firebase/app';
 import { getFirestore, disableNetwork, enableNetwork } from 'firebase/firestore';
-import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import { getStorage } from 'firebase/storage';
 
 // Async Storage
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -55,19 +57,16 @@ if (!getApps().length) {
 	app = getApp();
 }
 
-// Initalize Firestore & Firebase Auth
+// Initialize Firestore
 const db = getFirestore(app);
 
-// Initialize Firebase Auth (only if it hasn't been initialized)
-let auth;
-if (getApps().length && !auth) {
-	auth = getAuth(app); // Use getAuth to handle initialization automatically
-} else {
-	// Initialize with persistence if needed
-	auth = initializeAuth(app, {
-		persistence: getReactNativePersistence(AsyncStorage), // AsyncStorage for auth persistence
-	});
-}
+// Ensure Firebase Auth uses AsyncStorage for persistence
+const auth = initializeAuth(app, {
+	persistence: getReactNativePersistence(AsyncStorage),
+});
+
+// Initialize Firebase Storage
+const storage = getStorage(app);
 
 // Prevent the splash screen from hiding until fonts are loaded
 SplashScreen.preventAutoHideAsync();
@@ -104,10 +103,10 @@ const App = () => {
 					if (netInfo.isConnected === false) {
 						Alert.alert('You are offline. You can read, but cannot send messages.');
 						await disableNetwork(db); //  Ensure Firestore is properly disabled
-						console.log('Firestore network disabled');
+						('Firestore network disabled');
 					} else {
 						await enableNetwork(db); // Ensure Firestore is properly enabled
-						console.log('Firestore network enabled');
+						('Firestore network enabled');
 					}
 				} catch (error) {
 					console.error('Error managing Firestore network:', error);
@@ -124,31 +123,34 @@ const App = () => {
 	}
 
 	return (
-		<NavigationContainer>
-			<Stack.Navigator initialRouteName="Start">
-				{/* Start Screen */}
-				<Stack.Screen name="Start">
-					{(props) => (
-						<Start
-							db={db}
-							auth={auth}
-							{...props}
-						/>
-					)}
-				</Stack.Screen>
-				{/* Chat Screen */}
-				<Stack.Screen name="Chat">
-					{(props) => (
-						<Chat
-							db={db}
-							auth={auth}
-							isConnected={isConnected}
-							{...props}
-						/>
-					)}
-				</Stack.Screen>
-			</Stack.Navigator>
-		</NavigationContainer>
+		<ActionSheetProvider>
+			<NavigationContainer>
+				<Stack.Navigator initialRouteName="Start">
+					{/* Start Screen */}
+					<Stack.Screen name="Start">
+						{(props) => (
+							<Start
+								db={db}
+								auth={auth}
+								{...props}
+							/>
+						)}
+					</Stack.Screen>
+					{/* Chat Screen */}
+					<Stack.Screen name="Chat">
+						{(props) => (
+							<Chat
+								db={db}
+								auth={auth}
+								storage={storage}
+								isConnected={isConnected}
+								{...props}
+							/>
+						)}
+					</Stack.Screen>
+				</Stack.Navigator>
+			</NavigationContainer>
+		</ActionSheetProvider>
 	);
 };
 

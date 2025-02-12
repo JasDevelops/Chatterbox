@@ -6,7 +6,8 @@ import {
 	TouchableWithoutFeedback,
 	Keyboard,
 	Text,
-	Alert,
+	Image,
+	TouchableOpacity,
 } from 'react-native';
 import { GiftedChat, Bubble, InputToolbar, Composer, Send, Day } from 'react-native-gifted-chat';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,9 +15,14 @@ import { collection, query, orderBy, onSnapshot, addDoc } from 'firebase/firesto
 import { onAuthStateChanged } from 'firebase/auth';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import MapView, { Marker } from 'react-native-maps';
+import { Audio } from 'expo-av';
 
-const Chat = ({ route, navigation, db, auth, isConnected }) => {
-	// Get safe are inset
+import Actions from './Actions';
+import MessageAudio from './MessageAudio';
+
+const Chat = ({ route, navigation, db, auth, storage, isConnected }) => {
+	// Get safe are inset for proper spacing on devices with notches
 	const insets = useSafeAreaInsets();
 	// Use state for userId
 	const [userId, setUserId] = useState(null);
@@ -41,11 +47,10 @@ const Chat = ({ route, navigation, db, auth, isConnected }) => {
 				console.error('Failed to load alignment from AsyncStorage', error);
 			}
 		};
-
 		loadAlignment();
 	}, []);
 
-	// Save alignment to AsyncStorage
+	// Save bubble alignment to AsyncStorage
 	useEffect(() => {
 		const saveAlignment = async () => {
 			try {
@@ -54,7 +59,6 @@ const Chat = ({ route, navigation, db, auth, isConnected }) => {
 				console.error('Failed to save alignment to AsyncStorage', error);
 			}
 		};
-
 		saveAlignment();
 	}, [alignment]);
 
@@ -66,7 +70,6 @@ const Chat = ({ route, navigation, db, auth, isConnected }) => {
 		const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () =>
 			setKeyboardVisible(false)
 		);
-
 		return () => {
 			keyboardDidShowListener.remove();
 			keyboardDidHideListener.remove();
@@ -100,18 +103,20 @@ const Chat = ({ route, navigation, db, auth, isConnected }) => {
 			console.warn('Cannot send messages while offline.');
 			return; // Block sending if offline
 		}
-
 		if (!userId) return; // Ensure userId is available before sending messages
 
 		const message = newMessages[0]; // Get the latest message
 
 		// Save new message to Firestore
 		addDoc(collection(db, 'messages'), {
-			text: message.text,
+			text: message.text || '',
+			image: message.image || '',
+			location: message.location || null,
+			audio: message.audio || '',
 			createdAt: new Date(), // Store as Firestore timestamp
 			user: {
-				_id: userId, // Identify the sender
-				name: name, // Display sender's name
+				_id: userId || 'unknown', // Ensure user ID is present
+				name: name || 'Anonymous', // Ensure name is present
 			},
 		});
 
@@ -123,20 +128,19 @@ const Chat = ({ route, navigation, db, auth, isConnected }) => {
 		});
 	};
 
-	// Get Firebase Auth instance
+	// Listen for authentication state changes to set the user ID
 	useEffect(() => {
 		const unsubscribe = onAuthStateChanged(auth, (user) => {
 			if (user) {
 				setUserId(user.uid); // Set the Firebase user ID
 			} else {
-				console.log('No authenticated user found');
+				('No authenticated user found');
 			}
 		});
-
-		return () => unsubscribe(); // Cleanup auth listener
+		return () => unsubscribe(); // Cleanup auth listener on unmount
 	}, [auth]);
 
-	// Load cached messages only after userId is set
+	// Load cached messages once the user ID is available
 	useEffect(() => {
 		if (userId) {
 			loadCachedMessages();
@@ -147,16 +151,18 @@ const Chat = ({ route, navigation, db, auth, isConnected }) => {
 	useEffect(() => {
 		let unsubscribe;
 		if (userId && isConnected) {
-			// Ensure user is online and userId is available before fetching
-
+			// Create a query for messages ordered by creation date in descending order
 			const messagesQuery = query(collection(db, 'messages'), orderBy('createdAt', 'desc'));
-			// Subscribe to Firestore messages collection and listen for updates
+			// Listen for snapshot updates from Firestore
 			unsubscribe = onSnapshot(messagesQuery, (querySnapshot) => {
 				const loadedMessages = querySnapshot.docs.map((doc) => {
 					const data = doc.data();
 					return {
 						_id: doc.id,
 						text: data.text,
+						image: data.image,
+						location: data.location,
+						audio: data.audio,
 						createdAt: data.createdAt ? data.createdAt.toDate() : new Date(), // Convert Firestore timestamp to Date
 						user: {
 							_id: data.user?._id || 'unknown', // Ensure user ID is present
@@ -189,6 +195,37 @@ const Chat = ({ route, navigation, db, auth, isConnected }) => {
 		navigation.setOptions({ title: name || 'Chat' });
 	}, [name, navigation]); //  Ensures the effect re-runs when `name` changes
 
+	// Function that returns Action component
+	const renderActions = (props) => (
+		<Actions
+			storage={storage}
+			onSend={onSend}
+			userId={userId}
+			{...props}
+		/>
+	);
+
+	// Function to render a map view when a message includes location data
+	const renderCustomView = (props) => {
+		const { currentMessage } = props;
+		if (currentMessage.location) {
+			const { latitude, longitude } = currentMessage.location;
+			return (
+				<MapView
+					style={{ width: 150, height: 100, borderRadius: 10 }}
+					region={{
+						latitude: latitude,
+						longitude: longitude,
+						latitudeDelta: 0.01,
+						longitudeDelta: 0.01,
+					}}>
+					<Marker coordinate={{ latitude, longitude }} />
+				</MapView>
+			);
+		}
+		return null;
+	};
+
 	return (
 		<TouchableWithoutFeedback onPress={Keyboard.dismiss}>
 			{/* Main container with Dynamically set background color */}
@@ -206,6 +243,9 @@ const Chat = ({ route, navigation, db, auth, isConnected }) => {
 						_id: userId, // Pass correct userId from authentication
 						name: name, // Pass user’s name
 					}}
+					renderActions={renderActions} // Use the custom ActionSheet
+					renderCustomView={renderCustomView} // Render map if location data exists
+					renderMessageAudio={(props) => <MessageAudio {...props} />} // Render MessageAudio
 					listViewProps={{
 						keyboardShouldPersistTaps: 'handled', // Ensures taps on the chat don’t dismiss the keyboard
 						scrollsToTop: false, // Prevents scrolling to the top accidentally
@@ -221,22 +261,61 @@ const Chat = ({ route, navigation, db, auth, isConnected }) => {
 					alwaysShowSend={isConnected} // Send button is only always visible when online
 					keyboardShouldPersistTaps="handled" // Prevents chat from interfering with input
 					// Chat bubbles
-					renderBubble={(props) => (
-						<Bubble
-							{...props}
-							wrapperStyle={{
-								right: { backgroundColor: '#757083' }, // User bubble color
-								left: { backgroundColor: '#f0f0f0' }, // Received bubble color
-							}}
-							containerStyle={{
-								right: { alignItems: alignment === 'right' ? 'flex-end' : 'flex-start' }, // User message is on the right
-								left: { alignItems: alignment === 'left' ? 'flex-start' : 'flex-end' }, // Other message is on the left
-							}}
-							accessibilityLabel="Chat bubble"
-							accessibilityHint="Contains the chat message content."
-							accessibilityRole="text"
-						/>
-					)}
+					renderBubble={(props) => {
+						const isCurrentUser = props.currentMessage.user?._id === userId; // Check if message is from the current user
+						return (
+							<Bubble
+								{...props}
+								wrapperStyle={{
+									right: isCurrentUser
+										? { backgroundColor: '#757083' }
+										: { backgroundColor: '#f0f0f0' },
+									left: { backgroundColor: '#f0f0f0' },
+								}}
+								containerStyle={{
+									right: isCurrentUser ? { alignSelf: 'flex-end' } : { alignSelf: 'flex-start' },
+									left: { alignSelf: 'flex-start' },
+								}}
+								accessibilityLabel="Chat bubble"
+								accessibilityHint="Contains the chat message content."
+								accessibilityRole="text"
+								// Inline error-handling for image messages
+								renderMessageImage={(props) => {
+									// Define an inline component for rendering images with error handling
+									const RenderImage = () => {
+										// Local state for tracking image loading errors
+										const [error, setError] = React.useState(false);
+										if (error) {
+											// Fallback view if image fails to load
+											return (
+												<View
+													style={{
+														width: 200,
+														height: 200,
+														borderRadius: 10,
+														backgroundColor: '#ccc',
+														alignItems: 'center',
+														justifyContent: 'center',
+													}}>
+													<Text style={{ color: '#333' }}>Image not available</Text>
+												</View>
+											);
+										}
+										return (
+											<Image
+												source={{ uri: props.currentMessage.image }}
+												style={{ width: 200, height: 200, borderRadius: 10 }}
+												accessibilityLabel="Image message"
+												accessible={true}
+												onError={() => setError(true)}
+											/>
+										);
+									};
+									return <RenderImage />;
+								}}
+							/>
+						);
+					}}
 					// Date label above bubbles
 					renderDay={(props) => (
 						<Day
@@ -259,7 +338,7 @@ const Chat = ({ route, navigation, db, auth, isConnected }) => {
 							</Text>
 						</View>
 					)}
-					// Prevent input components from rendering when offline
+					// Only render the input toolbar when online
 					renderInputToolbar={(props) =>
 						isConnected ? (
 							<InputToolbar
@@ -274,6 +353,7 @@ const Chat = ({ route, navigation, db, auth, isConnected }) => {
 							/>
 						) : null
 					}
+					// Only render the composer when online
 					renderComposer={(props) =>
 						isConnected ? (
 							<Composer
@@ -285,6 +365,7 @@ const Chat = ({ route, navigation, db, auth, isConnected }) => {
 							/>
 						) : null
 					}
+					// Only render the send button when online
 					renderSend={(props) =>
 						isConnected ? (
 							<Send
@@ -314,31 +395,35 @@ const styles = StyleSheet.create({
 	container: {
 		flex: 1, // Ensures it takes full screen height
 	},
+	// Container adjustments when the keyboard is open
 	containerShifted: {
-		flex: 1, // Adjust heights to shift up when the keyboard is open
+		flex: 1,
 		marginBottom: 0,
 		paddingBottom: Platform.OS === 'android' ? 0 : 0, // More spacing for Android/iOS
 	},
+	// Styling for the input toolbar (message input container)
 	inputToolbar: {
 		width: '100%',
 		alignSelf: 'center',
-		minHeight: 50, // Ensures enough height for the input field
+		minHeight: 50,
 		backgroundColor: '#fff',
 		borderTopWidth: 1,
 		borderTopColor: '#ddd',
 		paddingBottom: 10,
 		paddingHorizontal: 10,
 	},
+	// Styling for the text input (composer)
 	composerInput: {
 		color: '#000',
 		fontSize: 16,
-		paddingVertical: 10, // Increases height of the input field
+		paddingVertical: 10,
 		backgroundColor: '#fff',
 		borderRadius: 20,
 		paddingHorizontal: 10,
-		minHeight: 40, // Forces input field to always be visible
+		minHeight: 40,
 		flex: 1,
 	},
+	// Container for the send button
 	sendButtonContainer: {
 		justifyContent: 'center',
 		alignItems: 'center',
