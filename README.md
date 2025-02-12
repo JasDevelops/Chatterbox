@@ -76,8 +76,8 @@ Ensure you have the following installed on your system:
 
 1. **Clone the Repository**
 
-`git clone https://github.com/JasDevelops/Chatterbox.git`
-`cd Chatterbox`
+- `git clone https://github.com/JasDevelops/Chatterbox.git`
+- `cd Chatterbox`
 
 2. **Install Project Dependencies**
 
@@ -132,7 +132,7 @@ APP_ID=your_firebase_app_id_here
 
 5. **Add Firebase Configuration:**
 
-- Copy your Firebase config from the Firebase Console and add it to your `.env` file as described above.
+- Copy your Firebase config from the Firebase Console (Project settings → General)  and add it to your `.env` file as described above.
 
 ---
 
@@ -174,7 +174,7 @@ APP_ID=your_firebase_app_id_here
 
 ### Offline Message Storage
 
-- conversations even without an internet connection.
+- Read or listen to conversations even without an internet connection.
 - When you reconnect, new messages are synced with Firestore.
 
 ---
@@ -201,7 +201,7 @@ This project is licensed under the MIT License.
 
 ## Acknowledgements
 
-- My tutor and mentor at [CareerFoundry](https://careerfoundry.com/) for providing guidance and support.
+- My tutor and mentor at **[CareerFoundry](https://careerfoundry.com/)** for providing guidance and support.
 - The developers behind **[React Native Gifted Chat](https://github.com/FaridSafi/react-native-gifted-chat)** for the chat UI library.
 - **[Expo](https://expo.dev/)** for making React Native development a bit easier.
 - **[Firebase](https://firebase.google.com/)** for offering a backend solution.
