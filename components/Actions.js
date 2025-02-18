@@ -11,7 +11,6 @@ import { v4 as uuidv4 } from 'uuid';
 const Actions = ({ storage, onSend, userId }) => {
 	// To display more than 3 options in Actionsheet for Android
 	const { showActionSheetWithOptions } = useActionSheet();
-	// Upload and send image
 	const uploadImage = async (imageUri) => {
 		try {
 			if (!userId) {

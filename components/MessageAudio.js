@@ -6,7 +6,6 @@ import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 
 const MessageAudio = ({ currentMessage }) => {
-	// If there's no audio URL, don't render anything.
 	if (!currentMessage.audio) return null;
 
 	const [sound, setSound] = useState(null);
@@ -19,7 +18,6 @@ const MessageAudio = ({ currentMessage }) => {
 	// Helper function to check if the audio file exists
 	const checkAudioFile = async (url) => {
 		try {
-			// Check file existence without downloading the entire file.
 			const response = await fetch(url, { method: 'HEAD' });
 			return response.ok;
 		} catch (err) {
@@ -76,9 +74,7 @@ const MessageAudio = ({ currentMessage }) => {
 					sound.pauseAsync();
 				}
 				setIsPlaying(false);
-				// Reset the position state so the slider returns to the beginning
 				setPosition(0);
-				// Reset the audio playback position
 				if (sound) {
 					sound.setPositionAsync(0);
 				}
@@ -90,17 +86,15 @@ const MessageAudio = ({ currentMessage }) => {
 
 		const loadSound = async () => {
 			setLoading(true);
-			// First, check if the audio file exists.
 			const fileExists = await checkAudioFile(currentMessage.audio);
 			if (!fileExists) {
 				if (isMounted) {
 					setError(true);
 					setLoading(false);
 				}
-				return; // Exit early; don't try to load non-existent file.
+				return;
 			}
 
-			// Get the local cached URI or download the file if not cached.
 			const localAudioUri = await getLocalAudioUri(currentMessage.audio);
 
 			try {

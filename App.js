@@ -3,24 +3,19 @@ import { useNetInfo } from '@react-native-community/netinfo';
 import { StyleSheet, LogBox, Alert } from 'react-native';
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 
-// Import fonts and splash screen
 import * as SplashScreen from 'expo-splash-screen';
 import * as Font from 'expo-font';
 
-// Import navigator
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-// Firebase imports
 import { initializeApp, getApp, getApps } from 'firebase/app';
 import { getFirestore, disableNetwork, enableNetwork } from 'firebase/firestore';
 import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 
-// Async Storage
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Environment variables
 import {
 	API_KEY,
 	AUTH_DOMAIN,
@@ -30,11 +25,9 @@ import {
 	APP_ID,
 } from '@env';
 
-// Import components
 import Start from './components/Start';
 import Chat from './components/Chat';
 
-//AsyncStorage warning
 LogBox.ignoreLogs(['AsyncStorage has been extracted from']);
 
 // Firebase configuration
@@ -87,7 +80,7 @@ const App = () => {
 				'Poppins-SemiBold': require('./assets/fonts/Poppins-SemiBold.ttf'),
 			});
 			setFontsLoaded(true);
-			await SplashScreen.hideAsync(); // Hide splash screen after fonts are loaded
+			await SplashScreen.hideAsync();
 		};
 
 		loadFonts();
@@ -102,10 +95,10 @@ const App = () => {
 				try {
 					if (netInfo.isConnected === false) {
 						Alert.alert('You are offline. You can read, but cannot send messages.');
-						await disableNetwork(db); //  Ensure Firestore is properly disabled
+						await disableNetwork(db);
 						('Firestore network disabled');
 					} else {
-						await enableNetwork(db); // Ensure Firestore is properly enabled
+						await enableNetwork(db);
 						('Firestore network enabled');
 					}
 				} catch (error) {
@@ -113,20 +106,19 @@ const App = () => {
 				}
 			};
 
-			updateFirestoreConnection(); // Call async function
+			updateFirestoreConnection();
 		}
 	}, [netInfo.isConnected]);
 
 	// After all hooks have been called, conditionally render UI
 	if (!fontsLoaded) {
-		return null; // Keeps splash screen until fonts are loaded
+		return null;
 	}
 
 	return (
 		<ActionSheetProvider>
 			<NavigationContainer>
 				<Stack.Navigator initialRouteName="Start">
-					{/* Start Screen */}
 					<Stack.Screen name="Start">
 						{(props) => (
 							<Start
@@ -136,7 +128,6 @@ const App = () => {
 							/>
 						)}
 					</Stack.Screen>
-					{/* Chat Screen */}
 					<Stack.Screen name="Chat">
 						{(props) => (
 							<Chat

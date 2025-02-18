@@ -103,7 +103,7 @@ const Chat = ({ route, navigation, db, auth, storage, isConnected }) => {
 			console.warn('Cannot send messages while offline.');
 			return; // Block sending if offline
 		}
-		if (!userId) return; // Ensure userId is available before sending messages
+		if (!userId) return;
 
 		const message = newMessages[0]; // Get the latest message
 
@@ -113,10 +113,10 @@ const Chat = ({ route, navigation, db, auth, storage, isConnected }) => {
 			image: message.image || '',
 			location: message.location || null,
 			audio: message.audio || '',
-			createdAt: new Date(), // Store as Firestore timestamp
+			createdAt: new Date(),
 			user: {
-				_id: userId || 'unknown', // Ensure user ID is present
-				name: name || 'Anonymous', // Ensure name is present
+				_id: userId || 'unknown',
+				name: name || 'Anonymous',
 			},
 		});
 
@@ -145,7 +145,7 @@ const Chat = ({ route, navigation, db, auth, storage, isConnected }) => {
 		if (userId) {
 			loadCachedMessages();
 		}
-	}, [userId]); // This will run when userId changes
+	}, [userId]);
 
 	// Fetch chat messages from Firestore in real-time when online
 	useEffect(() => {
@@ -163,10 +163,10 @@ const Chat = ({ route, navigation, db, auth, storage, isConnected }) => {
 						image: data.image,
 						location: data.location,
 						audio: data.audio,
-						createdAt: data.createdAt ? data.createdAt.toDate() : new Date(), // Convert Firestore timestamp to Date
+						createdAt: data.createdAt ? data.createdAt.toDate() : new Date(),
 						user: {
-							_id: data.user?._id || 'unknown', // Ensure user ID is present
-							name: data.user?.name || 'Unknown', // Ensure user name is present
+							_id: data.user?._id || 'unknown',
+							name: data.user?.name || 'Unknown',
 						},
 					};
 				});
@@ -193,7 +193,7 @@ const Chat = ({ route, navigation, db, auth, storage, isConnected }) => {
 	// Set the navigation title to the user's name
 	useEffect(() => {
 		navigation.setOptions({ title: name || 'Chat' });
-	}, [name, navigation]); //  Ensures the effect re-runs when `name` changes
+	}, [name, navigation]);
 
 	// Function that returns Action component
 	const renderActions = (props) => (
@@ -240,17 +240,17 @@ const Chat = ({ route, navigation, db, auth, storage, isConnected }) => {
 					messages={messages}
 					onSend={(messages) => onSend(messages)}
 					user={{
-						_id: userId, // Pass correct userId from authentication
-						name: name, // Pass user’s name
+						_id: userId,
+						name: name,
 					}}
-					renderActions={renderActions} // Use the custom ActionSheet
-					renderCustomView={renderCustomView} // Render map if location data exists
-					renderMessageAudio={(props) => <MessageAudio {...props} />} // Render MessageAudio
+					renderActions={renderActions}
+					renderCustomView={renderCustomView}
+					renderMessageAudio={(props) => <MessageAudio {...props} />}
 					listViewProps={{
-						keyboardShouldPersistTaps: 'handled', // Ensures taps on the chat don’t dismiss the keyboard
-						scrollsToTop: false, // Prevents scrolling to the top accidentally
+						keyboardShouldPersistTaps: 'handled',
+						scrollsToTop: false,
 					}}
-					scrollToBottom // Enables scroll to bottom button
+					scrollToBottom
 					scrollToBottomComponent={() => (
 						<Ionicons
 							name="chevron-down"
@@ -258,11 +258,10 @@ const Chat = ({ route, navigation, db, auth, storage, isConnected }) => {
 							color="#757083"
 						/>
 					)}
-					alwaysShowSend={isConnected} // Send button is only always visible when online
-					keyboardShouldPersistTaps="handled" // Prevents chat from interfering with input
-					// Chat bubbles
+					alwaysShowSend={isConnected}
+					keyboardShouldPersistTaps="handled"
 					renderBubble={(props) => {
-						const isCurrentUser = props.currentMessage.user?._id === userId; // Check if message is from the current user
+						const isCurrentUser = props.currentMessage.user?._id === userId;
 						return (
 							<Bubble
 								{...props}
@@ -279,9 +278,7 @@ const Chat = ({ route, navigation, db, auth, storage, isConnected }) => {
 								accessibilityLabel="Chat bubble"
 								accessibilityHint="Contains the chat message content."
 								accessibilityRole="text"
-								// Inline error-handling for image messages
 								renderMessageImage={(props) => {
-									// Define an inline component for rendering images with error handling
 									const RenderImage = () => {
 										// Local state for tracking image loading errors
 										const [error, setError] = React.useState(false);
@@ -316,7 +313,6 @@ const Chat = ({ route, navigation, db, auth, storage, isConnected }) => {
 							/>
 						);
 					}}
-					// Date label above bubbles
 					renderDay={(props) => (
 						<Day
 							{...props}
@@ -358,7 +354,7 @@ const Chat = ({ route, navigation, db, auth, storage, isConnected }) => {
 						isConnected ? (
 							<Composer
 								{...props}
-								textInputStyle={styles.composerInput} // Forces Input field to be visible
+								textInputStyle={styles.composerInput}
 								accessibilityLabel="Type a message"
 								accessibilityHint="Enter your chat message here."
 								accessibilityRole="text"
@@ -391,17 +387,14 @@ const Chat = ({ route, navigation, db, auth, storage, isConnected }) => {
 };
 
 const styles = StyleSheet.create({
-	// Full-screen container with dynamic background color
 	container: {
-		flex: 1, // Ensures it takes full screen height
+		flex: 1,
 	},
-	// Container adjustments when the keyboard is open
 	containerShifted: {
 		flex: 1,
 		marginBottom: 0,
-		paddingBottom: Platform.OS === 'android' ? 0 : 0, // More spacing for Android/iOS
+		paddingBottom: 0,
 	},
-	// Styling for the input toolbar (message input container)
 	inputToolbar: {
 		width: '100%',
 		alignSelf: 'center',
@@ -412,7 +405,6 @@ const styles = StyleSheet.create({
 		paddingBottom: 10,
 		paddingHorizontal: 10,
 	},
-	// Styling for the text input (composer)
 	composerInput: {
 		color: '#000',
 		fontSize: 16,
@@ -423,7 +415,6 @@ const styles = StyleSheet.create({
 		minHeight: 40,
 		flex: 1,
 	},
-	// Container for the send button
 	sendButtonContainer: {
 		justifyContent: 'center',
 		alignItems: 'center',
