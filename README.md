@@ -18,7 +18,7 @@ It supports offline message storage and is designed with accessibility in mind.
 
 ---
 
-## Features
+## <a name="features"></a>Features
 
 - **User-friendly Start Screen**
   - Users enter their name and choose a background color before joining the chat.
@@ -43,7 +43,7 @@ It supports offline message storage and is designed with accessibility in mind.
 
 ---
 
-## Technology Used
+## <a name="technology-used"></a>Technology Used
 
 - **React Native** – Framework for building cross-platform mobile apps.
 - **Expo** – Streamlines development, testing, and deployment.
@@ -60,7 +60,7 @@ It supports offline message storage and is designed with accessibility in mind.
 
 ---
 
-## Installation
+## <a name="installation"></a>Installation
 
 ### Prerequisites
 
@@ -136,7 +136,7 @@ APP_ID=your_firebase_app_id_here
 
 ---
 
-## How to Use
+## <a name="how-to-use"></a>How to Use
 
 ### Enter a Name & Select a Background Color
 
@@ -179,27 +179,27 @@ APP_ID=your_firebase_app_id_here
 
 ---
 
-## Contributing
+## <a name="contributing"></a>Contributing
 
 Contributions are welcome!
 
 ### To contribute:
 
 1. Fork this repository.
-2. Create a new branch (`git checkout -b feature-branch`).
-3. Make your changes and commit (`git commit -m "Added a new feature"`).
-4. Push to the branch (`git push origin feature-branch`).
+2. Create a new branch `git checkout -b feature-branch`.
+3. Make your changes and commit `git commit -m "Added a new feature"`.
+4. Push to the branch `git push origin feature-branch`.
 5. Open a pull request.
 
 ---
 
-## License
+## <a name="license"></a>License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License. See the [License](./LICENSE) file for details.
 
 ---
 
-## Acknowledgements
+## <a name="acknowledgements"></a>Acknowledgements
 
 - My tutor and mentor at **[CareerFoundry](https://careerfoundry.com/)** for providing guidance and support.
 - The developers behind **[React Native Gifted Chat](https://github.com/FaridSafi/react-native-gifted-chat)** for the chat UI library.
